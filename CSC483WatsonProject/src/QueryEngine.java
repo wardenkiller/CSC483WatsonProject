@@ -28,21 +28,25 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.tartarus.snowball.ext.PorterStemmer;
 
 import edu.stanford.nlp.simple.Sentence;
 
 public class QueryEngine {
-    boolean indexExists=false;
+	String indexOutPath = "/Users/guojunwei/Downloads/index";
+	boolean indexExists = false;
     boolean stem;
     boolean lemma;
     //String inputFilePath ="src/main/resources/input.txt";
-    static String inputFilePath = "/Users/guojunwei/Downloads/testfolder";
+    static String inputFilePath = "/Users/guojunwei/Downloads/wiki-subset-20140602";
     StandardAnalyzer analyzer = new StandardAnalyzer();
-    Directory index = new RAMDirectory();
+    Directory index;
     private final String docid = "docid";
-    public QueryEngine(String inputFile){
+    public QueryEngine(String inputFile,boolean stem, boolean lemma){
+    	this.lemma = lemma;
+    	this.stem = stem;
         inputFilePath =inputFile;
         buildIndex();
     }
@@ -53,10 +57,12 @@ public class QueryEngine {
     private void buildIndex() {
     	try {
             //String fileName = "input.txt";
+    		index = FSDirectory.open(new File(indexOutPath).toPath());
         	IndexWriterConfig config = new IndexWriterConfig(analyzer);
             IndexWriter w;
             w = new IndexWriter(index, config);
-            String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
+            String inputFilePath ="/Users/guojunwei/Downloads/wiki-subset-20140602";
+            
             File folder = new File(inputFilePath);	
             File[] fs = folder.listFiles();
         	for (File f: fs) {
@@ -119,6 +125,7 @@ public class QueryEngine {
         			//System.out.println(f);
         		}
         	}
+        	
         	w.close();
             
         }
@@ -190,9 +197,11 @@ public class QueryEngine {
     
 
     public static void main(String[] args ) throws FileNotFoundException, IOException {
-    	QueryEngine objQueryEngine = new QueryEngine(inputFilePath);
+    	//QueryEngine objQueryEngineStem = new QueryEngine(inputFilePath, true, false);
+    	QueryEngine objQueryEngineLemma = new QueryEngine(inputFilePath, false, true);
+    	//QueryEngine objQueryEngineNeither = new QueryEngine(inputFilePath, false, false);
     	String[] query13a = {"BSI", "certifies"};
-        objQueryEngine.runQ1_1(query13a); 
+        objQueryEngineLemma.runQ1_1(query13a); 
     }
 
     public void createIndex() {
