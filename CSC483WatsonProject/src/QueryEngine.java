@@ -1,6 +1,7 @@
 
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +33,7 @@ import org.apache.lucene.store.RAMDirectory;
 public class QueryEngine {
     boolean indexExists=false;
     //String inputFilePath ="src/main/resources/input.txt";
-    String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
+    static String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
     StandardAnalyzer analyzer = new StandardAnalyzer();
     Directory index = new RAMDirectory();
     private final String docid = "docid";
@@ -45,33 +46,60 @@ public class QueryEngine {
      * This method builds index for the documents to the lucene framework
      */
     private void buildIndex() {
-        //Get file from resources folder
-        ClassLoader classLoader = getClass().getClassLoader();
-        File file = new File(classLoader.getResource(inputFilePath).getFile());
-
-        IndexWriterConfig config = new IndexWriterConfig(analyzer);
-
-        IndexWriter w;
-        
-        try (Scanner inputScanner = new Scanner(file)) {
-        	w = new IndexWriter(index, config);
-//        	File[] fs = file.listFiles();
-//        	for (File f: fs) {
-//        		if (!f.isDirectory()) {
-//        			System.out.println(f);
-//        		}
-//        	}
-            while (inputScanner.hasNextLine()) {
-                //System.out.println(inputScanner.nextLine());
-            	String temp = inputScanner.nextLine();
-            	String docID = temp.substring(0, temp.indexOf(' '));
-            	String content = temp.substring(temp.indexOf(' ') + 1);
-            	addDoc(w, content, docID);
-            }
-            inputScanner.close();
-            w.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+    	try {
+            //String fileName = "input.txt";
+        	IndexWriterConfig config = new IndexWriterConfig(analyzer);
+            IndexWriter w;
+            w = new IndexWriter(index, config);
+            String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
+            File folder = new File(inputFilePath);	
+            File[] fs = folder.listFiles();
+        	for (File f: fs) {
+        		if (!f.isDirectory()) {
+        			try (Scanner inputScanner = new Scanner(f)) {        	        	
+        				String content = "";
+        				String docTitle = "";
+        				String categories = "";
+        	            while (inputScanner.hasNextLine()) {
+        	            	String temp = inputScanner.nextLine();
+        	            	int tempLength = temp.length();
+        	            	if (temp.startsWith("[[")&&temp.endsWith("]]")) {
+        	            		if (!content.equals("")) {
+        	            			System.out.println(docTitle);
+        	            			System.out.println(categories);
+        	            			System.out.println(content);
+        	            			addDoc(w, docTitle, categories, content);
+        	            			content = "";
+        	            		} else {
+        	            			docTitle = temp.substring(2, tempLength - 2);
+        	            		}
+        	            		docTitle = temp.substring(2, tempLength - 2);
+        	            		//System.out.println(docTitle);
+        	            	} else if (temp.equals("")) {
+        	            		continue;
+        	            	} else if (temp.indexOf("CATEGORIES") == 0){
+        	            		categories = temp.substring(12);		//get all the text from temp after "CATEGORIES"
+        	            	} else {
+        	            		content += temp;
+        	            		content += " ";
+        	            	}
+        	            	//addDoc(w, content, docID);
+        	            }
+        	            inputScanner.close();
+        	            //w.close();
+        	        } catch (IOException e) {
+        	            e.printStackTrace();
+        	        }
+        	        
+        	        indexExists = true;	
+                    
+        			//System.out.println(f);
+        		}
+        	}
+            
+        }
+        catch (Exception ex) {
+            System.out.println(ex.getMessage());
         }
         
         indexExists = true;
@@ -86,36 +114,26 @@ public class QueryEngine {
      * @param isbn
      * @throws IOException
      */
-    private void addDoc(IndexWriter w, String title, String isbn) throws IOException {
+    private void addDoc(IndexWriter w, String title, String categories,String content) throws IOException {
     	  Document doc = new Document();
-    	  doc.add(new TextField("title", title, Field.Store.YES));
-    	  doc.add(new StringField(docid, isbn, Field.Store.YES));
-    	  w.addDocument(doc);
+    	  doc.add(new StringField("title", title, Field.Store.YES));
+  		  doc.add(new TextField("categories", categories, Field.Store.YES));
+  		  doc.add(new TextField("text", content, Field.Store.YES)); 
+  		  w.addDocument(doc);
+    }
+    
+    
+
+    public static void main(String[] args ) throws FileNotFoundException, IOException {
+    	QueryEngine objQueryEngine = new QueryEngine(inputFilePath);
+    	String[] query13a = {"BSI", "certifies"};
+        objQueryEngine.runQ1_1(query13a); 
     }
 
-    public static void main(String[] args ) {
-        try {
-            String fileName = "input.txt";
-            //System.out.println("********Welcome to  Homework 3!");
-            //String[] query13a = {"information", "retrieval"};
-            String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
-            //ClassLoader classLoader = getClass().getClassLoader();
-            //File file = new File(classLoader.getResource(inputFilePath).getFile());
-            File file = new File(inputFilePath);	
-            File[] fs = file.listFiles();
-        	for (File f: fs) {
-        		if (!f.isDirectory()) {
-        			System.out.println(f);
-        		}
-        	}
-            QueryEngine objQueryEngine = new QueryEngine(fileName);
-            //objQueryEngine.runQ1_1(query13a); 
-        }
-        catch (Exception ex) {
-            System.out.println(ex.getMessage());
-        }
+    public void createIndex() {
+    	
+        
     }
-
     /**
      * find docid and length for information retrieval
      * @param query
@@ -137,7 +155,7 @@ public class QueryEngine {
         List<ResultClass>  ans=new ArrayList<ResultClass>();
 		try {
 			q = new QueryParser("title", analyzer).parse(querystr);
-			int hitsPerPage = 4;
+			int hitsPerPage = 10;
 	        IndexReader reader = DirectoryReader.open(index);
 	        IndexSearcher searcher = new IndexSearcher(reader);
 	        TopDocs docs = searcher.search(q, hitsPerPage);
