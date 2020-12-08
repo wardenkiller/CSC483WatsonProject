@@ -29,11 +29,16 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.RAMDirectory;
+import org.tartarus.snowball.ext.PorterStemmer;
+
+import edu.stanford.nlp.simple.Sentence;
 
 public class QueryEngine {
     boolean indexExists=false;
+    boolean stem;
+    boolean lemma;
     //String inputFilePath ="src/main/resources/input.txt";
-    static String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
+    static String inputFilePath = "/Users/guojunwei/Downloads/testfolder";
     StandardAnalyzer analyzer = new StandardAnalyzer();
     Directory index = new RAMDirectory();
     private final String docid = "docid";
@@ -64,7 +69,7 @@ public class QueryEngine {
         	            	//need to remove TPL&url
         	            	String temp = inputScanner.nextLine();
         	            	int tempLength = temp.length();
-        	            	if (temp.startsWith("[[")&&temp.endsWith("]]")) {
+        	            	if (temp.length() > 4 && temp.startsWith("[[") && temp.endsWith("]]")) {
         	            		if (!content.equals("")) {
         	            			System.out.println(docTitle);
         	            			System.out.println(categories);
@@ -103,6 +108,7 @@ public class QueryEngine {
         	            System.out.println(docTitle);
             			System.out.println(categories);
             			System.out.println(content);
+            			System.out.println();
         	            addDoc(w, docTitle, categories, content);
         	        } catch (IOException e) {
         	            e.printStackTrace();
@@ -123,6 +129,28 @@ public class QueryEngine {
         indexExists = true;
     }
     
+    // change regular word to lemma form
+ 	private String makeLemma(String lemmaWord, String originWord) {
+ 		Sentence sent = new Sentence(originWord.toLowerCase());
+ 		List<String> lemmasList = sent.lemmas();
+ 		for (String word: lemmasList){
+ 			lemmaWord += word;
+ 			lemmaWord += " ";
+ 		}
+ 		return lemmaWord;
+ 	}
+ 	
+ 	// change regular word to stem form
+ 	private String makeStem(String stemWord, String originWord) {
+ 		Sentence sent = new Sentence(originWord.toLowerCase());
+ 		List<String> stemList = sent.words();
+ 		for (String word: stemList){
+ 			stemWord += getStem(word);
+ 			stemWord += " ";
+ 		}
+ 		return stemWord;
+ 	}
+    
     /**
      * Your indexed documents should have two fields: 
      * a tokenized and searchable text field containing the text of the document (i.e., each line without the first token), 
@@ -135,11 +163,30 @@ public class QueryEngine {
     private void addDoc(IndexWriter w, String title, String categories,String content) throws IOException {
     	  Document doc = new Document();
     	  doc.add(new StringField("title", title, Field.Store.YES));
-  		  doc.add(new TextField("categories", categories, Field.Store.YES));
-  		  doc.add(new TextField("content", content, Field.Store.YES)); 
+    	  String category = "";
+    	  String cont = "";
+    	  if (stem) {
+    		  category = makeStem(category, categories);
+    		  cont = makeStem(cont, content);
+    	  } else if (lemma) {
+    		  category = makeLemma(category, categories);
+    		  cont = makeLemma(cont, content);
+    	  } else {
+    		  category = categories.toLowerCase();
+    		  cont = content.toLowerCase();
+    	  }
+  		  doc.add(new TextField("categories", category.trim(), Field.Store.YES));
+  		  doc.add(new TextField("content", cont.trim(), Field.Store.YES)); 
   		  w.addDocument(doc);
     }
     
+    
+    private String getStem(String word) {
+		PorterStemmer stem = new PorterStemmer();
+		stem.setCurrent(word);
+		stem.stem();
+		return stem.getCurrent();
+	}
     
 
     public static void main(String[] args ) throws FileNotFoundException, IOException {
@@ -305,83 +352,8 @@ public class QueryEngine {
         return ans;
     }
      
-    /**
-     * find docid and length for information retrieval within one word
-     * @param query
-     * @return
-     * @throws java.io.FileNotFoundException
-     * @throws java.io.IOException
-     */
-    public List<ResultClass> runQ1_2_c(String[] query) throws java.io.FileNotFoundException,java.io.IOException {
-    	if(!indexExists) {
-            buildIndex();
-        }
-    	String querystr = "\"" + query[0] + " " + query[1] + "\"" + "~1";
-    	//String querystr = "\"information retrieval\"~1";
-//        for (int i = 0; i < query.length; i++) {
-//			querystr += query[i] + " ";
-//		} 
-//        querystr.trim();
-        Query q;
-        
-        List<ResultClass>  ans=new ArrayList<ResultClass>();
-		try {
-			q = new QueryParser("title", analyzer).parse(querystr);
-			int hitsPerPage = 4;
-	        IndexReader reader = DirectoryReader.open(index);
-	        IndexSearcher searcher = new IndexSearcher(reader);
-	        TopDocs docs = searcher.search(q, hitsPerPage);
-	        ScoreDoc[] hits = docs.scoreDocs;
-	        
-	        System.out.println("Found " + hits.length + " hits.");
-	        for(int i=0;i<hits.length;++i) {
-	            int docId = hits[i].doc;
-	            Explanation e = searcher.explain(q, docId);
-	            Document d = searcher.doc(docId);
-	            System.out.println((i + 1) + ". " + d.get(docid) + "\t" + d.get("title")+"\t" +e.getValue()+"\t");
-	            
-	            ResultClass r = new ResultClass();
-	            r.DocName = d;
-	            r.docScore = e.getValue();	
-	            ans.add(r);
-	        }
-	        
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-        
-        
-        
-        //ans =returnDummyResults(3);
-        return ans;
-    }
+    
 
-    public List<ResultClass> runQ1_3(String[] query) throws java.io.FileNotFoundException,java.io.IOException {
-
-        if(!indexExists) {
-            buildIndex();
-        }
-        StringBuilder result = new StringBuilder("");
-        List<ResultClass>  ans=new ArrayList<ResultClass>();
-        ans =returnDummyResults(2);
-        return ans;
-    }
-
-
-    private  List<ResultClass> returnDummyResults(int maxNoOfDocs) {
-
-        List<ResultClass> doc_score_list = new ArrayList<ResultClass>();
-            for (int i = 0; i < maxNoOfDocs; ++i) {
-                Document doc = new Document();
-                doc.add(new TextField("title", "", Field.Store.YES));
-                doc.add(new StringField("docid", "Doc"+Integer.toString(i+1), Field.Store.YES));
-                ResultClass objResultClass= new ResultClass();
-                objResultClass.DocName =doc;
-                doc_score_list.add(objResultClass);
-            }
-
-        return doc_score_list;
-    }
+    
 
 }
