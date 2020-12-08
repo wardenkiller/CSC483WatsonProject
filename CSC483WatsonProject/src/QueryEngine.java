@@ -61,6 +61,7 @@ public class QueryEngine {
         				String docTitle = "";
         				String categories = "";
         	            while (inputScanner.hasNextLine()) {
+        	            	//need to remove TPL&url
         	            	String temp = inputScanner.nextLine();
         	            	int tempLength = temp.length();
         	            	if (temp.startsWith("[[")&&temp.endsWith("]]")) {
@@ -68,6 +69,7 @@ public class QueryEngine {
         	            			System.out.println(docTitle);
         	            			System.out.println(categories);
         	            			System.out.println(content);
+        	            			System.out.println();
         	            			addDoc(w, docTitle, categories, content);
         	            			content = "";
         	            		} else {
@@ -79,14 +81,29 @@ public class QueryEngine {
         	            		continue;
         	            	} else if (temp.indexOf("CATEGORIES") == 0){
         	            		categories = temp.substring(12);		//get all the text from temp after "CATEGORIES"
+        	            		//categories = categories.replaceAll("\\p{Punct}",""); 
+        	            	} else if (temp.length() > 2 && temp.startsWith("=") && temp.endsWith("=")) {
+        	            		while (temp.length() > 2 && temp.startsWith("=") && temp.endsWith("=")) {
+        	            			temp = temp.substring(1, temp.length() - 1);
+        	            		}
+        	            		if (!temp.equals("See also") && !temp.equals("References") && !temp.equals("Further reading")  
+        	            				&&	!temp.equals("External links") && !temp.equals("Examples")) {
+        	            			content += temp;
+        	            			content += " ";
+        	            		}
         	            	} else {
-        	            		content += temp;
+        	            		String removeTPL = temp.replaceAll("\\[tpl\\].*?\\[/tpl\\]", "");
+        	            		//String removePunctuation = removeTPL.replaceAll("\\p{Punct}",""); 
+        	            		content += removeTPL;
         	            		content += " ";
         	            	}
         	            	//addDoc(w, content, docID);
         	            }
         	            inputScanner.close();
-        	            //w.close();
+        	            System.out.println(docTitle);
+            			System.out.println(categories);
+            			System.out.println(content);
+        	            addDoc(w, docTitle, categories, content);
         	        } catch (IOException e) {
         	            e.printStackTrace();
         	        }
@@ -96,6 +113,7 @@ public class QueryEngine {
         			//System.out.println(f);
         		}
         	}
+        	w.close();
             
         }
         catch (Exception ex) {
@@ -118,7 +136,7 @@ public class QueryEngine {
     	  Document doc = new Document();
     	  doc.add(new StringField("title", title, Field.Store.YES));
   		  doc.add(new TextField("categories", categories, Field.Store.YES));
-  		  doc.add(new TextField("text", content, Field.Store.YES)); 
+  		  doc.add(new TextField("content", content, Field.Store.YES)); 
   		  w.addDocument(doc);
     }
     
