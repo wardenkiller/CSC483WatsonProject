@@ -58,6 +58,35 @@
 
   <build>
     <plugins>
+    <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>3.1.1</version>
+                <configuration>
+                    <appendAssemblyId>false</appendAssemblyId>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <archive>
+                        <manifest>
+
+                            
+                            <mainClass>QueryEngine</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+    
+    
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -77,36 +106,11 @@
       </execution>
     </executions>
     <configuration>
-      <!-- TODO: if your main class is called something else, change it here -->
-      <mainClass>edu.arizona.cs.QueryEngine</mainClass>
-      <!-- TODO: if your class takes command line arguments, change them here -->
+      
+      <mainClass>QueryEngine</mainClass>
+      
       <arguments>
-
-        <!--&lt;!&ndash;For Qn 1.1-->
-        <argument>information</argument>
-        <argument>retrieval</argument>
-
-        <!--For Qn 1.3.a
-        <argument>information</argument>
-        <argument>AND</argument>
-        <argument>retrieval</argument>-->
-
-        <!--For Qn 1.3.b
-        <argument>information</argument>
-        <argument>AND NOT</argument>
-        <argument>retrieval</argument>-->
-
-        <!--For Qn 1.3.c
-        <argument>information</argument>
-        <argument>AND</argument>
-        <argument>retrieval</argument>
-        <argument>2</argument>-->
-
-        <!-- For testing other words with WITH PROXIMITY-->
-        <!--<argument>information</argument>-->
-        <!--<argument></argument>-->
-        <!--<argument>retrieval</argument>-->
-        <!--<argument>4</argument>-->
+		
 
 
 
