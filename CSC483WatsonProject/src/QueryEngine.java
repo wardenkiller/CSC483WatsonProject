@@ -35,12 +35,13 @@ import org.tartarus.snowball.ext.PorterStemmer;
 import edu.stanford.nlp.simple.Sentence;
 
 public class QueryEngine {
-	String indexOutPath = "/Users/guojunwei/Downloads/index";
+	String indexOutPath = "/Users/guojunwei/Downloads/lemmaIndex";
 	boolean indexExists = false;
     boolean stem;
     boolean lemma;
     //String inputFilePath ="src/main/resources/input.txt";
-    static String inputFilePath = "/Users/guojunwei/Downloads/wiki-subset-20140602";
+    //static String inputFilePath = "/Users/guojunwei/Downloads/wiki-subset-20140602";
+    static String inputFilePath;
     StandardAnalyzer analyzer = new StandardAnalyzer();
     Directory index;
     private final String docid = "docid";
@@ -62,12 +63,14 @@ public class QueryEngine {
             IndexWriter w;
             w = new IndexWriter(index, config);
             String inputFilePath ="/Users/guojunwei/Downloads/wiki-subset-20140602";
-            
+            //String inputFilePath ="/Users/guojunwei/Downloads/testfolder";
+
             File folder = new File(inputFilePath);	
             File[] fs = folder.listFiles();
         	for (File f: fs) {
         		if (!f.isDirectory()) {
-        			try (Scanner inputScanner = new Scanner(f)) {        	        	
+        			
+        			Scanner inputScanner = new Scanner(f);
         				String content = "";
         				String docTitle = "";
         				String categories = "";
@@ -76,16 +79,13 @@ public class QueryEngine {
         	            	String temp = inputScanner.nextLine();
         	            	int tempLength = temp.length();
         	            	if (temp.length() > 4 && temp.startsWith("[[") && temp.endsWith("]]")) {
-        	            		if (!content.equals("")) {
-        	            			System.out.println(docTitle);
-        	            			System.out.println(categories);
-        	            			System.out.println(content);
-        	            			System.out.println();
-        	            			addDoc(w, docTitle, categories, content);
-        	            			content = "";
-        	            		} else {
-        	            			docTitle = temp.substring(2, tempLength - 2);
-        	            		}
+    	            			
+    	            			if (!docTitle.equals("")) {
+    	            				System.out.println("filename: " + f.getName());
+    	            				addDoc(w, docTitle, categories, content);
+    	            			}
+    	            			content = "";
+    	            			categories = "";
         	            		docTitle = temp.substring(2, tempLength - 2);
         	            		//System.out.println(docTitle);
         	            	} else if (temp.equals("")) {
@@ -111,14 +111,13 @@ public class QueryEngine {
         	            	//addDoc(w, content, docID);
         	            }
         	            inputScanner.close();
-        	            System.out.println(docTitle);
-            			System.out.println(categories);
-            			System.out.println(content);
+//        	            System.out.println("LASTtitle: " + docTitle);
+//        	            System.out.println("LASTfilename: " + f.getName());
+//            			System.out.println("LASTcategories: " + categories);
+//            			System.out.println("LASTcontent: " + content);
             			System.out.println();
         	            addDoc(w, docTitle, categories, content);
-        	        } catch (IOException e) {
-        	            e.printStackTrace();
-        	        }
+        	       
         	        
         	        indexExists = true;	
                     
@@ -130,7 +129,7 @@ public class QueryEngine {
             
         }
         catch (Exception ex) {
-            System.out.println(ex.getMessage());
+        	ex.printStackTrace();
         }
         
         indexExists = true;
@@ -172,6 +171,16 @@ public class QueryEngine {
     	  doc.add(new StringField("title", title, Field.Store.YES));
     	  String category = "";
     	  String cont = "";
+    	  categories = categories.trim();
+    	  content = content.trim();
+    	  if (categories.equals("")) {
+    		  categories = ":";
+    	  }
+    	  if (content.equals("")) {
+    		  content = ":";
+    	  }
+    	  
+    	  
     	  if (stem) {
     		  category = makeStem(category, categories);
     		  cont = makeStem(cont, content);
@@ -182,9 +191,14 @@ public class QueryEngine {
     		  category = categories.toLowerCase();
     		  cont = content.toLowerCase();
     	  }
-  		  doc.add(new TextField("categories", category.trim(), Field.Store.YES));
-  		  doc.add(new TextField("content", cont.trim(), Field.Store.YES)); 
+    	  
+  		  doc.add(new TextField("categories", category, Field.Store.YES));
+  		  doc.add(new TextField("content", cont, Field.Store.YES)); 
   		  w.addDocument(doc);
+  		  System.out.println("title: " + title);
+  		  System.out.println("categories: " + category);
+  		  System.out.println("content: " + cont);
+  		  System.out.println();
     }
     
     
