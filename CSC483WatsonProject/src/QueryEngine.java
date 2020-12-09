@@ -20,8 +20,10 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.queryparser.classic.MultiFieldQueryParser;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -242,11 +244,19 @@ public class QueryEngine {
         			correctAns = scanner.nextLine();
         		} else {
         			scanner.nextLine(); //skip empty line
+        			System.out.println(category);
+        			System.out.println(query);
+        			System.out.println(correctAns);
         			//add category to query to narrow down the search
-        			List<ResultClass> myAnsList = runQuery(category + " " + query);	
-        			String myAns = myAnsList.get(0).DocName.get(docid);
-        			System.out.println("correct answer is " + correctAns);
-        			System.out.println("my answer is " + myAns);
+        			List<ResultClass> myAnsList = runQuery(category, query);	
+        			if (myAnsList.size() == 0) {
+        				System.out.println("NO SUCH RESULTS!");
+        			} else {
+        				String myAns = myAnsList.get(0).DocName.get(docid);
+            			System.out.println("correct answer is " + correctAns);
+            			System.out.println("my answer is " + myAns);
+        			}
+        			
         		}
         		i++;
         	}
@@ -262,7 +272,7 @@ public class QueryEngine {
      * @throws java.io.FileNotFoundException
      * @throws java.io.IOException
      */
-    public List<ResultClass> runQuery(String query) throws java.io.FileNotFoundException,java.io.IOException{
+    public List<ResultClass> runQuery(String category,String query) throws java.io.FileNotFoundException,java.io.IOException{
     	/**
          * 1 open index
          * 2 iterate question list and put the query into lucene, get score(BM25, tf-idf)
@@ -273,8 +283,29 @@ public class QueryEngine {
         List<ResultClass> ans = new ArrayList<ResultClass>();
 		try {
 			Directory index = FSDirectory.open(new File("/Users/guojunwei/Downloads/index").toPath()); //lemmaIndex
-			q = new QueryParser("title", analyzer).parse(query);
-			
+			//q = new QueryParser("content", analyzer).parse(query);
+		System.out.println("query category:" +category);
+		   System.out.println("query query:" +query);
+		   List<String> list = new ArrayList<>();
+		   if (!category.equals("")) {
+		    list.add(category);
+		   }
+		   if (!query.equals("")) {
+		    list.add(query);
+		   }
+		   if (list.size()==0) {
+		    System.out.println("怎么没有查询参数?");
+		   }
+		    //要查找的字符串数组
+		   String [] stringQuery = {};
+		         stringQuery=list.toArray(stringQuery);
+			//String [] stringQuery={category,query};
+	         
+			//待查找字符串对应的字段
+	         String[] fields={"categories","content"};
+	         //Occur.MUST表示对应字段必须有查询值， Occur.MUST_NOT 表示对应字段必须没有查询值，Occur.SHOULD表示对应字段应该存在查询值（但不是必须）
+	        Occur[] occ={Occur.SHOULD,Occur.SHOULD};
+	        q = MultiFieldQueryParser.parse(stringQuery, fields, occ, analyzer);
 			int hitsPerPage = 5;
 	        IndexReader reader = DirectoryReader.open(index);
 	        IndexSearcher searcher = new IndexSearcher(reader);
