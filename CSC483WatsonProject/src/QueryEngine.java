@@ -300,60 +300,6 @@ public class QueryEngine {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-        
-        
-        
-        //ans =returnDummyResults(3);
-        return ans;
-    }
-
-    /**
-     * find docid and length for information AND retrieval
-     * @param query
-     * @return
-     * @throws java.io.FileNotFoundException
-     * @throws java.io.IOException
-     */
-    public List<ResultClass> runQ1_2_a(String[] query) throws java.io.FileNotFoundException,java.io.IOException {
-        if(!indexExists) {
-            buildIndex();
-        }
-        String querystr = query[0] + " AND " + query[1];
-//        for (int i = 0; i < query.length; i++) {
-//			querystr += query[i] + " ";
-//		} 
-//        querystr.trim();
-        Query q;
-        
-        List<ResultClass>  ans=new ArrayList<ResultClass>();
-		try {
-			q = new QueryParser("title", analyzer).parse(querystr);
-			int hitsPerPage = 4;
-	        IndexReader reader = DirectoryReader.open(index);
-	        IndexSearcher searcher = new IndexSearcher(reader);
-	        TopDocs docs = searcher.search(q, hitsPerPage);
-	        ScoreDoc[] hits = docs.scoreDocs;
-	        
-	        System.out.println("Found " + hits.length + " hits.");
-	        for(int i=0;i<hits.length;++i) {
-	            int docId = hits[i].doc;
-	            Explanation e = searcher.explain(q, docId);
-	            Document d = searcher.doc(docId);
-	            System.out.println((i + 1) + ". " + d.get(docid) + "\t" + d.get("title")+"\t" +e.getValue()+"\t");
-	            
-	            ResultClass r = new ResultClass();
-	            r.DocName = d;
-	            r.docScore = e.getValue();	
-	            ans.add(r);
-	        }
-	        
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-        
-        
-        
         //ans =returnDummyResults(3);
         return ans;
     }
