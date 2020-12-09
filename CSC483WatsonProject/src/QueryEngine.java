@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 
 //import javax.management.Query;
@@ -31,6 +32,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.RAMDirectory;
 import org.tartarus.snowball.ext.PorterStemmer;
+import org.apache.lucene.search.similarities.Similarity;
+
 
 import edu.stanford.nlp.simple.Sentence;
 
@@ -39,6 +42,7 @@ public class QueryEngine {
 	boolean indexExists = false;
     boolean stem;
     boolean lemma;
+    private Optional<Similarity> s;
     //String inputFilePath ="src/main/resources/input.txt";
     //static String inputFilePath = "/Users/guojunwei/Downloads/wiki-subset-20140602";
     static String inputFilePath;
@@ -49,7 +53,7 @@ public class QueryEngine {
     	this.lemma = lemma;
     	this.stem = stem;
         inputFilePath =inputFile;
-        buildIndex();
+        //buildIndex();
     }
      
     /**
@@ -214,12 +218,41 @@ public class QueryEngine {
     	//QueryEngine objQueryEngineStem = new QueryEngine(inputFilePath, true, false);
     	QueryEngine objQueryEngineLemma = new QueryEngine(inputFilePath, false, true);
     	//QueryEngine objQueryEngineNeither = new QueryEngine(inputFilePath, false, false);
-    	String[] query13a = {"BSI", "certifies"};
-        objQueryEngineLemma.runQ1_1(query13a); 
+    	//String[] query13a = {"BSI", "certifies"};
+        //objQueryEngineLemma.runQ1_1(query13a); 
+    	objQueryEngineLemma.compareAnswers();
     }
 
-    public void createIndex() {
-    	
+    public void compareAnswers() throws IOException {
+    	//open index
+    	//Directory lemmaIndex = FSDirectory.open(new File("/Users/guojunwei/Downloads/lemmaIndex").toPath());
+        File questionList = new File("/Users/guojunwei/Downloads/questions/questions.txt");
+        try (Scanner scanner = new Scanner (questionList)){
+        	int i = 0;	//track lines
+        	Query q;
+        	String query = "";
+        	String category = "";
+        	String correctAns = "";
+        	while (scanner.hasNextLine()) {
+        		if (i % 4 == 0) {
+        			category = scanner.nextLine();
+        		} else if (i % 4 == 1) {
+        			query = scanner.nextLine().trim();
+        		} else if (i % 4 == 2) {
+        			correctAns = scanner.nextLine();
+        		} else {
+        			scanner.nextLine(); //skip empty line
+        			//add category to query to narrow down the search
+        			List<ResultClass> myAnsList = runQuery(category + " " + query);	
+        			String myAns = myAnsList.get(0).DocName.get(docid);
+        			System.out.println("correct answer is " + correctAns);
+        			System.out.println("my answer is " + myAns);
+        		}
+        		i++;
+        	}
+        } catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
         
     }
     /**
@@ -229,36 +262,37 @@ public class QueryEngine {
      * @throws java.io.FileNotFoundException
      * @throws java.io.IOException
      */
-    public List<ResultClass> runQ1_1(String[] query) throws java.io.FileNotFoundException,java.io.IOException{
-        if(!indexExists) {
-            buildIndex();
-        } 
-        String querystr = null;
-        for (int i = 0; i < query.length; i++) {
-			querystr += query[i] + " ";
-		} 
-        querystr.trim();
+    public List<ResultClass> runQuery(String query) throws java.io.FileNotFoundException,java.io.IOException{
+    	/**
+         * 1 open index
+         * 2 iterate question list and put the query into lucene, get score(BM25, tf-idf)
+         * 3 output the 
+         */
         Query q;
-        
-        List<ResultClass>  ans=new ArrayList<ResultClass>();
+        StandardAnalyzer analyzer = new StandardAnalyzer();
+        List<ResultClass> ans = new ArrayList<ResultClass>();
 		try {
-			q = new QueryParser("title", analyzer).parse(querystr);
-			int hitsPerPage = 10;
+			Directory index = FSDirectory.open(new File("/Users/guojunwei/Downloads/index").toPath()); //lemmaIndex
+			q = new QueryParser("title", analyzer).parse(query);
+			
+			int hitsPerPage = 5;
 	        IndexReader reader = DirectoryReader.open(index);
 	        IndexSearcher searcher = new IndexSearcher(reader);
-	        TopDocs docs = searcher.search(q, hitsPerPage);
-	        ScoreDoc[] hits = docs.scoreDocs;
 	        
-	        System.out.println("Found " + hits.length + " hits.");
-	        for(int i=0;i<hits.length;++i) {
+	        TopDocs docs = searcher.search(q, hitsPerPage);	//search
+	        ScoreDoc[] hits = docs.scoreDocs;				//get result
+	        
+	        //System.out.println("Found " + hits.length + " hits.");
+	        for(int i = 0;i < hits.length; ++i) {
 	            int docId = hits[i].doc;
-	            Explanation e = searcher.explain(q, docId);
+	            //Explanation e = searcher.explain(q, docId);
 	            Document d = searcher.doc(docId);
-	            System.out.println((i + 1) + ". " + d.get(docid) + "\t" + d.get("title")+"\t" +e.getValue()+"\t");
+	            //System.out.println((i + 1) + ". " + d.get(docid) + "\t" + d.get("title")+"\t" + hits[i].score 
+	            		//+ "\t");
 	            
 	            ResultClass r = new ResultClass();
 	            r.DocName = d;
-	            r.docScore = e.getValue();	
+	            r.docScore = hits[i].score;	
 	            ans.add(r);
 	        }
 	        
@@ -323,60 +357,6 @@ public class QueryEngine {
         //ans =returnDummyResults(3);
         return ans;
     }
-
-    /**
-     * find docid and length for information AND NOT retrieval
-     * @param query
-     * @return
-     * @throws java.io.FileNotFoundException
-     * @throws java.io.IOException
-     */
-    public List<ResultClass> runQ1_2_b(String[] query) throws java.io.FileNotFoundException,java.io.IOException {
-    	if(!indexExists) {
-            buildIndex();
-        }
-    	String querystr = query[0] + " AND NOT " + query[1];
-//        for (int i = 0; i < query.length; i++) {
-//			querystr += query[i] + " ";
-//		} 
-//        querystr.trim();
-        Query q;
-        
-        List<ResultClass>  ans=new ArrayList<ResultClass>();
-		try {
-			q = new QueryParser("title", analyzer).parse(querystr);
-			int hitsPerPage = 4;
-	        IndexReader reader = DirectoryReader.open(index);
-	        IndexSearcher searcher = new IndexSearcher(reader);
-	        TopDocs docs = searcher.search(q, hitsPerPage);
-	        ScoreDoc[] hits = docs.scoreDocs;
-	        
-	        System.out.println("Found " + hits.length + " hits.");
-	        for(int i=0;i<hits.length;++i) {
-	            int docId = hits[i].doc;
-	            Explanation e = searcher.explain(q, docId);
-	            Document d = searcher.doc(docId);
-	            System.out.println((i + 1) + ". " + d.get(docid) + "\t" + d.get("title")+"\t" +e.getValue()+"\t");
-	            
-	            ResultClass r = new ResultClass();
-	            r.DocName = d;
-	            r.docScore = e.getValue();	
-	            ans.add(r);
-	        }
-	        
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-        
-        
-        
-        //ans =returnDummyResults(3);
-        return ans;
-    }
-     
-    
-
-    
+ 
 
 }
